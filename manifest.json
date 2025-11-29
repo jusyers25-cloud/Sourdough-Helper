@@ -2,25 +2,26 @@
   "name": "Sourdough Helper",
   "short_name": "Sourdough",
   "description": "Calculate fermentation times and store sourdough recipes",
-  "start_url": "/sourdough-helper/",
+  "start_url": "/Sourdough-Helper/",
   "display": "standalone",
   "background_color": "#F0F7F4",
   "theme_color": "#2D5F3F",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/sourdough-helper/images/icon-192.png",
+      "src": "/Sourdough-Helper/images/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/sourdough-helper/images/icon-512.png",
+      "src": "/Sourdough-Helper/images/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ]
 }
+
 
 
