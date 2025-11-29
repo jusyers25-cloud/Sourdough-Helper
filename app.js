@@ -5,13 +5,8 @@ const loadingMessages = [
     "Waiting for the perfect rise...",
     "Scoring the loaf...",
     "Preheating the oven...",
-    "Creating something delicious...",
     "Stretching and folding...",
-    "Building gluten structure...",
-    "Checking the float test...",
     "Dusting with flour...",
-    "Getting that perfect ear...",
-    "Preparing the banneton...",
     "I love you mom!",
     "Save some for Cody!",
     "Throwing Shadow's ball..."
@@ -440,3 +435,4 @@ document.addEventListener('touchend', (event) => {
     }
     lastTouchEnd = now;
 }, false);
+
