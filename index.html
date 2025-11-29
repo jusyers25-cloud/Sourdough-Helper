@@ -75,33 +75,49 @@
                         <div class="input-header">
                             <div class="input-icon">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                    <path d="M3 3v18h18"></path>
+                                    <path d="m19 9-5 5-4-4-3 3"></path>
                                 </svg>
                             </div>
                             <div class="input-info">
-                                <h3>Starter Strength</h3>
-                                <p>How active is your starter?</p>
+                                <h3>Flour Weight</h3>
+                                <p>Total flour in recipe</p>
                             </div>
-                            <div class="input-value" id="strength-value">50%</div>
+                            <div class="input-value" id="flour-value">500g</div>
                         </div>
-                        <input type="range" id="starter-strength" min="0" max="100" value="50" class="slider">
+                        <input type="range" id="flour-weight" min="100" max="1000" value="500" step="50" class="slider">
                     </div>
 
                     <div class="input-card">
                         <div class="input-header">
                             <div class="input-icon">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M3 3v18h18"></path>
-                                    <path d="m19 9-5 5-4-4-3 3"></path>
+                                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                                 </svg>
                             </div>
                             <div class="input-info">
-                                <h3>Dough Weight</h3>
-                                <p>Total dough weight</p>
+                                <h3>Water Weight</h3>
+                                <p>Total water in recipe</p>
                             </div>
-                            <div class="input-value" id="weight-value">1000g</div>
+                            <div class="input-value" id="water-value">350g</div>
                         </div>
-                        <input type="range" id="dough-weight" min="200" max="2000" value="1000" step="50" class="slider">
+                        <input type="range" id="water-weight" min="50" max="800" value="350" step="10" class="slider">
+                    </div>
+
+                    <div class="input-card">
+                        <div class="input-header">
+                            <div class="input-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="input-info">
+                                <h3>Starter Amount</h3>
+                                <p>Active sourdough starter</p>
+                            </div>
+                            <div class="input-value" id="starter-value">100g</div>
+                        </div>
+                        <input type="range" id="starter-weight" min="20" max="300" value="100" step="10" class="slider">
                     </div>
                 </div>
 
