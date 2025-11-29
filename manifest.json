@@ -2,7 +2,7 @@
   "name": "Sourdough Helper",
   "short_name": "Sourdough",
   "description": "Calculate fermentation times and store sourdough recipes",
-  "start_url": "./",
+  "start_url": "/sourdough-helper/",
   "display": "standalone",
   "background_color": "#F0F7F4",
   "theme_color": "#2D5F3F",
@@ -22,4 +22,5 @@
     }
   ]
 }
+
 
