@@ -1,3 +1,37 @@
+// Loading Screen Messages
+const loadingMessages = [
+    "Kneading the dough...",
+    "Feeding your starter...",
+    "Waiting for the perfect rise...",
+    "Scoring the loaf...",
+    "Preheating the oven...",
+    "Creating something delicious...",
+    "Stretching and folding...",
+    "Building gluten structure...",
+    "Checking the float test...",
+    "Dusting with flour...",
+    "Getting that perfect ear...",
+    "Preparing the banneton...",
+    "I love you mom!",
+    "Save some for Cody!",
+    "Throwing Shadow's ball..."
+];
+
+// Show random loading message
+function showSplashScreen() {
+    const messageEl = document.getElementById('splash-message');
+    const randomMessage = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+    messageEl.textContent = randomMessage;
+    
+    // Hide splash screen after 2.5 seconds
+    setTimeout(() => {
+        document.getElementById('splash-screen').style.display = 'none';
+    }, 2500);
+}
+
+// Show splash on load
+window.addEventListener('load', showSplashScreen);
+
 // Register Service Worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
