@@ -152,12 +152,14 @@ document.querySelectorAll('.tab-button').forEach(button => {
 
 // Calculator Logic
 const temperatureInput = document.getElementById('temperature');
-const strengthInput = document.getElementById('starter-strength');
-const weightInput = document.getElementById('dough-weight');
+const flourInput = document.getElementById('flour-weight');
+const waterInput = document.getElementById('water-weight');
+const starterInput = document.getElementById('starter-weight');
 
 const tempValue = document.getElementById('temp-value');
-const strengthValue = document.getElementById('strength-value');
-const weightValue = document.getElementById('weight-value');
+const flourValue = document.getElementById('flour-value');
+const waterValue = document.getElementById('water-value');
+const starterValue = document.getElementById('starter-value');
 
 const bulkTimeEl = document.getElementById('bulk-time');
 const proofTimeEl = document.getElementById('proof-time');
@@ -165,25 +167,38 @@ const totalTimeEl = document.getElementById('total-time');
 
 function calculateTimes() {
     const temp = parseFloat(temperatureInput.value);
-    const strength = parseFloat(strengthInput.value);
-    const weight = parseFloat(weightInput.value);
+    const flour = parseFloat(flourInput.value);
+    const water = parseFloat(waterInput.value);
+    const starter = parseFloat(starterInput.value);
 
-    // Base times
-    const baseBulk = 4.0; // hours
-    const baseProof = 3.0; // hours
+    // Calculate hydration percentage
+    const hydration = (water / flour) * 100;
 
-    // Temperature factor (warmer = faster)
-    const tempFactor = Math.pow(1.15, (70 - temp) / 5);
+    // Calculate inoculation percentage (starter as % of flour)
+    const inoculation = (starter / flour) * 100;
 
-    // Strength factor (stronger = faster)
-    const strengthFactor = 100 / (strength + 50);
+    // Base bulk fermentation time at 70°F with 20% inoculation and 70% hydration
+    let baseBulkTime = 4.5;
 
-    // Size factor (larger = slightly longer)
-    const sizeFactor = 1.0 + ((weight - 1000) / 5000);
-
-    // Calculate times
-    const bulkTime = baseBulk * tempFactor * strengthFactor * sizeFactor;
-    const proofTime = baseProof * tempFactor * strengthFactor;
+    // Temperature adjustment using Q10 principle (fermentation doubles every 10°C/18°F increase)
+    // Every 5°F change adjusts time by ~30%
+    const tempDiff = temp - 70;
+    const tempFactor = Math.pow(0.7, tempDiff / 5);
+    
+    // Inoculation adjustment: More starter = faster fermentation
+    // 10% starter = ~2x time, 20% = baseline, 30% = ~0.7x time
+    const inoculationFactor = 20 / inoculation;
+    
+    // Hydration adjustment: Higher hydration = slightly faster
+    // 65% = baseline +10%, 70% = baseline, 75% = baseline -10%
+    const hydrationFactor = 1 + ((70 - hydration) * 0.02);
+    
+    // Calculate bulk fermentation time
+    const bulkTime = baseBulkTime * tempFactor * inoculationFactor * hydrationFactor;
+    
+    // Final proof is typically 50-60% of bulk time
+    const proofTime = bulkTime * 0.55;
+    
     const totalTime = bulkTime + proofTime;
 
     // Update display
@@ -204,13 +219,18 @@ temperatureInput.addEventListener('input', () => {
     calculateTimes();
 });
 
-strengthInput.addEventListener('input', () => {
-    strengthValue.textContent = `${strengthInput.value}%`;
+flourInput.addEventListener('input', () => {
+    flourValue.textContent = `${flourInput.value}g`;
     calculateTimes();
 });
 
-weightInput.addEventListener('input', () => {
-    weightValue.textContent = `${weightInput.value}g`;
+waterInput.addEventListener('input', () => {
+    waterValue.textContent = `${waterInput.value}g`;
+    calculateTimes();
+});
+
+starterInput.addEventListener('input', () => {
+    starterValue.textContent = `${starterInput.value}g`;
     calculateTimes();
 });
 
@@ -435,4 +455,5 @@ document.addEventListener('touchend', (event) => {
     }
     lastTouchEnd = now;
 }, false);
+
 
