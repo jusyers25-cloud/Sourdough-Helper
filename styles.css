@@ -111,7 +111,7 @@ body {
 /* Header */
 .header {
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 20px;
     padding-top: 20px;
 }
 
@@ -130,6 +130,39 @@ body {
 .subtitle {
     font-size: 14px;
     color: var(--text-secondary);
+}
+
+/* Mode Selector */
+.mode-selector {
+    display: flex;
+    gap: 8px;
+    padding: 0 20px;
+    margin-bottom: 24px;
+}
+
+.mode-button {
+    flex: 1;
+    padding: 12px 16px;
+    background: var(--card);
+    border: 2px solid var(--light);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px var(--shadow);
+}
+
+.mode-button:active {
+    transform: scale(0.98);
+}
+
+.mode-button.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(45, 95, 63, 0.3);
 }
 
 /* Input Cards */
