@@ -63,12 +63,12 @@
                                 </svg>
                             </div>
                             <div class="input-info">
-                                <h3>Room Temperature</h3>
-                                <p>Warmer = faster rise</p>
+                                <h3>Dough Temperature</h3>
+                                <p>Final dough temp after mixing</p>
                             </div>
-                            <div class="input-value" id="temp-value">70°F</div>
+                            <div class="input-value" id="temp-value">75°F</div>
                         </div>
-                        <input type="range" id="temperature" min="60" max="85" value="70" class="slider">
+                        <input type="range" id="temperature" min="65" max="85" value="75" class="slider">
                     </div>
 
                     <div class="input-card">
@@ -129,23 +129,61 @@
                             <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path>
                             <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path>
                         </svg>
-                        <h2>Your Timeline</h2>
+                        <h2>Bulk Fermentation</h2>
+                        <p style="font-size: 14px; color: var(--text-secondary); margin-top: 4px;">On the counter</p>
                     </div>
                     <div class="divider"></div>
                     <div class="time-result">
                         <div class="time-step">
-                            <div class="step-number">1</div>
-                            <div class="step-info">
-                                <h4>Bulk Fermentation</h4>
+                            <div class="step-info" style="flex: 1;">
+                                <h4>Bulk fermentation time</h4>
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Until dough doubles</p>
                             </div>
                             <div class="step-time" id="bulk-time">4h 0m</div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="section-divider">
+                    <div class="divider-line"></div>
+                    <span class="divider-text">Then shape and cold proof</span>
+                    <div class="divider-line"></div>
+                </div>
+
+                <div class="input-card">
+                    <div class="input-header">
+                        <div class="input-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="input-info">
+                            <h3>Fridge Temperature</h3>
+                            <p>Cold proof temperature</p>
+                        </div>
+                        <div class="input-value" id="fridge-temp-value">38°F</div>
+                    </div>
+                    <input type="range" id="fridge-temperature" min="34" max="45" value="38" class="slider">
+                </div>
+
+                <div class="result-card">
+                    <div class="result-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                        <h2>Cold Proof</h2>
+                        <p style="font-size: 14px; color: var(--text-secondary); margin-top: 4px;">In the fridge</p>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="time-result">
                         <div class="time-step">
-                            <div class="step-number">2</div>
-                            <div class="step-info">
-                                <h4>Final Proof</h4>
+                            <div class="step-info" style="flex: 1;">
+                                <h4>Final proof time</h4>
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Overnight in fridge</p>
                             </div>
-                            <div class="step-time" id="proof-time">3h 0m</div>
+                            <div class="step-time" id="proof-time">12h 0m</div>
                         </div>
                     </div>
                     <div class="divider"></div>
@@ -154,7 +192,7 @@
                             <h3>Total Time</h3>
                             <p>From mix to bake</p>
                         </div>
-                        <div class="total-value" id="total-time">7h 0m</div>
+                        <div class="total-value" id="total-time">16h 0m</div>
                     </div>
                 </div>
             </div>
@@ -324,4 +362,5 @@
     <script src="app.js"></script>
 </body>
 </html>
+
 
