@@ -785,12 +785,31 @@ body {
     }
 }
 
+/* Section Divider */
+.section-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 24px 0;
+}
+
+.divider-line {
+    flex: 1;
+    height: 2px;
+    background: linear-gradient(to right, transparent, var(--light), transparent);
+}
+
+.divider-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--secondary);
+    white-space: nowrap;
+}
+
 /* iOS Safari fixes */
 @supports (-webkit-touch-callout: none) {
     body {
         height: -webkit-fill-available;
     }
-}
-
 }
 
