@@ -152,11 +152,13 @@ document.querySelectorAll('.tab-button').forEach(button => {
 
 // Calculator Logic
 const temperatureInput = document.getElementById('temperature');
+const fridgeTemperatureInput = document.getElementById('fridge-temperature');
 const flourInput = document.getElementById('flour-weight');
 const waterInput = document.getElementById('water-weight');
 const starterInput = document.getElementById('starter-weight');
 
 const tempValue = document.getElementById('temp-value');
+const fridgeTempValue = document.getElementById('fridge-temp-value');
 const flourValue = document.getElementById('flour-value');
 const waterValue = document.getElementById('water-value');
 const starterValue = document.getElementById('starter-value');
@@ -166,7 +168,8 @@ const proofTimeEl = document.getElementById('proof-time');
 const totalTimeEl = document.getElementById('total-time');
 
 function calculateTimes() {
-    const temp = parseFloat(temperatureInput.value);
+    const doughTemp = parseFloat(temperatureInput.value);
+    const fridgeTemp = parseFloat(fridgeTemperatureInput.value);
     const flour = parseFloat(flourInput.value);
     const water = parseFloat(waterInput.value);
     const starter = parseFloat(starterInput.value);
@@ -177,27 +180,44 @@ function calculateTimes() {
     // Calculate inoculation percentage (starter as % of flour)
     const inoculation = (starter / flour) * 100;
 
-    // Base bulk fermentation time at 70°F with 20% inoculation and 70% hydration
-    let baseBulkTime = 4.5;
+    // === BULK FERMENTATION (on counter) ===
+    // Base bulk fermentation time at 75°F dough temp, 20% inoculation, 70% hydration
+    let baseBulkTime = 4.0;
 
-    // Temperature adjustment using Q10 principle (fermentation doubles every 10°C/18°F increase)
-    // Every 5°F change adjusts time by ~30%
-    const tempDiff = temp - 70;
-    const tempFactor = Math.pow(0.7, tempDiff / 5);
+    // Dough temperature factor using Q10 coefficient
+    // 65°F = slow (8+ hours), 75°F = ideal (4-5 hours), 82°F = fast (2-3 hours)
+    const idealTemp = 75;
+    const tempDiff = doughTemp - idealTemp;
+    const tempFactor = Math.pow(2, -tempDiff / 9);
     
     // Inoculation adjustment: More starter = faster fermentation
-    // 10% starter = ~2x time, 20% = baseline, 30% = ~0.7x time
     const inoculationFactor = 20 / inoculation;
     
-    // Hydration adjustment: Higher hydration = slightly faster
-    // 65% = baseline +10%, 70% = baseline, 75% = baseline -10%
-    const hydrationFactor = 1 + ((70 - hydration) * 0.02);
+    // Hydration adjustment: Higher hydration ferments slightly faster
+    const hydrationFactor = 1 + ((70 - hydration) * 0.015);
     
     // Calculate bulk fermentation time
     const bulkTime = baseBulkTime * tempFactor * inoculationFactor * hydrationFactor;
     
-    // Final proof is typically 50-60% of bulk time
-    const proofTime = bulkTime * 0.55;
+    // === COLD PROOF (in fridge) ===
+    // Cold retardation dramatically slows fermentation
+    // At 38°F, fermentation is about 10-15x slower than at 75°F
+    // Base cold proof time: 12 hours at 38°F
+    const baseColdProofTime = 12.0;
+    
+    // Temperature adjustment for fridge (34-45°F range)
+    // 34°F = slower (14-16 hours), 38°F = ideal (12 hours), 45°F = faster (8-10 hours)
+    const idealFridgeTemp = 38;
+    const fridgeTempDiff = fridgeTemp - idealFridgeTemp;
+    // Each 4°F change adjusts time by ~25%
+    const fridgeTempFactor = Math.pow(0.75, fridgeTempDiff / 4);
+    
+    // Cold proof is less affected by inoculation (slower activity)
+    // But higher inoculation still shortens time slightly
+    const coldInoculationFactor = 1 + ((20 - inoculation) * 0.01);
+    
+    // Calculate cold proof time
+    const proofTime = baseColdProofTime * fridgeTempFactor * coldInoculationFactor;
     
     const totalTime = bulkTime + proofTime;
 
@@ -216,6 +236,11 @@ function formatTime(hours) {
 // Update values and recalculate
 temperatureInput.addEventListener('input', () => {
     tempValue.textContent = `${temperatureInput.value}°F`;
+    calculateTimes();
+});
+
+fridgeTemperatureInput.addEventListener('input', () => {
+    fridgeTempValue.textContent = `${fridgeTemperatureInput.value}°F`;
     calculateTimes();
 });
 
