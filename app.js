@@ -1,483 +1,372 @@
-// Loading Screen Messages
-const loadingMessages = [
-    "Kneading the dough...",
-    "Feeding your starter...",
-    "Waiting for the perfect rise...",
-    "Scoring the loaf...",
-    "Preheating the oven...",
-    "Stretching and folding...",
-    "Dusting with flour...",
-    "I love you mom!",
-    "Save some for Cody!",
-    "Throwing Shadow's ball..."
-];
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2D5F3F">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sourdough Helper">
+    <title>Sourdough Helper</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="images/icon-192.png">
+    <link rel="apple-touch-icon" href="images/icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="splash-screen" id="splash-screen">
+        <div class="splash-content">
+            <img src="images/icon-192.png" alt="Sourdough Helper" class="splash-icon">
+            <h1 class="splash-title">Sourdough Helper</h1>
+            <p class="splash-message" id="splash-message">Kneading the dough...</p>
+        </div>
+    </div>
 
-// Show random loading message
-function showSplashScreen() {
-    const messageEl = document.getElementById('splash-message');
-    const randomMessage = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
-    messageEl.textContent = randomMessage;
-    
-    // Hide splash screen after 2.5 seconds
-    setTimeout(() => {
-        document.getElementById('splash-screen').style.display = 'none';
-    }, 2500);
-}
-
-// Show splash on load
-window.addEventListener('load', showSplashScreen);
-
-// Register Service Worker
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-        .then(() => console.log('Service Worker registered'))
-        .catch(err => console.log('Service Worker registration failed', err));
-}
-
-// Recipe Storage
-class RecipeStore {
-    constructor() {
-        this.recipes = this.load();
-        if (this.recipes.length === 0) {
-            this.addSampleRecipes();
-        }
-    }
-
-    load() {
-        const stored = localStorage.getItem('sourdough-recipes');
-        return stored ? JSON.parse(stored) : [];
-    }
-
-    save() {
-        localStorage.setItem('sourdough-recipes', JSON.stringify(this.recipes));
-    }
-
-    add(recipe) {
-        recipe.id = Date.now().toString();
-        recipe.dateCreated = new Date().toISOString();
-        recipe.isFavorite = false;
-        this.recipes.unshift(recipe);
-        this.save();
-        return recipe;
-    }
-
-    update(id, updates) {
-        const index = this.recipes.findIndex(r => r.id === id);
-        if (index !== -1) {
-            this.recipes[index] = { ...this.recipes[index], ...updates };
-            this.save();
-            return this.recipes[index];
-        }
-        return null;
-    }
-
-    delete(id) {
-        this.recipes = this.recipes.filter(r => r.id !== id);
-        this.save();
-    }
-
-    toggleFavorite(id) {
-        const recipe = this.recipes.find(r => r.id === id);
-        if (recipe) {
-            recipe.isFavorite = !recipe.isFavorite;
-            this.save();
-            return recipe;
-        }
-        return null;
-    }
-
-    addSampleRecipes() {
-        this.add({
-            name: 'Classic Sourdough Boule',
-            ingredients: `• 500g bread flour
-• 350g water (70% hydration)
-• 100g active sourdough starter
-• 10g salt`,
-            instructions: `1. Mix flour and water, autolyse for 30 minutes
-2. Add starter and salt, mix until combined
-3. Bulk ferment 4-6 hours with stretch & folds every 30 min
-4. Shape and place in banneton
-5. Cold proof in fridge overnight
-6. Bake at 450°F in Dutch oven: 20 min covered, 25 min uncovered`,
-            notes: 'Perfect for beginners! Adjust hydration if too sticky.'
-        });
-
-        this.add({
-            name: 'Whole Wheat Sandwich Loaf',
-            ingredients: `• 300g bread flour
-• 200g whole wheat flour
-• 350g water
-• 100g active starter
-• 10g salt
-• 20g honey (optional)`,
-            instructions: `1. Mix all ingredients except salt
-2. Autolyse 30 minutes
-3. Add salt, knead 5 minutes
-4. Bulk ferment 4-5 hours
-5. Shape into loaf pan
-6. Proof 2-3 hours
-7. Bake at 375°F for 40-45 minutes`,
-            notes: 'Great for sandwiches and toast!'
-        });
-
-        // Mark first recipe as favorite
-        this.recipes[0].isFavorite = true;
-        this.save();
-    }
-}
-
-// Initialize
-const store = new RecipeStore();
-let currentRecipeId = null;
-let isEditMode = false;
-
-// Tab Navigation
-document.querySelectorAll('.tab-button').forEach(button => {
-    button.addEventListener('click', () => {
-        const tab = button.dataset.tab;
-        
-        // Update active states
-        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        
-        button.classList.add('active');
-        document.getElementById(`${tab}-view`).classList.add('active');
-        
-        // Refresh recipes when switching to recipes tab
-        if (tab === 'recipes') {
-            renderRecipes();
-        }
-    });
-});
-
-// Calculator Logic
-const temperatureInput = document.getElementById('temperature');
-const fridgeTemperatureInput = document.getElementById('fridge-temperature');
-const flourInput = document.getElementById('flour-weight');
-const waterInput = document.getElementById('water-weight');
-const starterInput = document.getElementById('starter-weight');
-
-const tempValue = document.getElementById('temp-value');
-const fridgeTempValue = document.getElementById('fridge-temp-value');
-const flourValue = document.getElementById('flour-value');
-const waterValue = document.getElementById('water-value');
-const starterValue = document.getElementById('starter-value');
-
-const bulkTimeEl = document.getElementById('bulk-time');
-const proofTimeEl = document.getElementById('proof-time');
-const totalTimeEl = document.getElementById('total-time');
-
-function calculateTimes() {
-    const doughTemp = parseFloat(temperatureInput.value);
-    const fridgeTemp = parseFloat(fridgeTemperatureInput.value);
-    const flour = parseFloat(flourInput.value);
-    const water = parseFloat(waterInput.value);
-    const starter = parseFloat(starterInput.value);
-
-    // Calculate hydration percentage
-    const hydration = (water / flour) * 100;
-
-    // Calculate inoculation percentage (starter as % of flour)
-    const inoculation = (starter / flour) * 100;
-
-    // === BULK FERMENTATION (on counter) ===
-    // Base bulk fermentation time at 75°F dough temp, 20% inoculation, 70% hydration
-    let baseBulkTime = 4.0;
-
-    // Dough temperature factor using Q10 coefficient
-    // 65°F = slow (8+ hours), 75°F = ideal (4-5 hours), 82°F = fast (2-3 hours)
-    const idealTemp = 75;
-    const tempDiff = doughTemp - idealTemp;
-    const tempFactor = Math.pow(2, -tempDiff / 9);
-    
-    // Inoculation adjustment: More starter = faster fermentation
-    const inoculationFactor = 20 / inoculation;
-    
-    // Hydration adjustment: Higher hydration ferments slightly faster
-    const hydrationFactor = 1 + ((70 - hydration) * 0.015);
-    
-    // Calculate bulk fermentation time
-    const bulkTime = baseBulkTime * tempFactor * inoculationFactor * hydrationFactor;
-    
-    // === COLD PROOF (in fridge) ===
-    // Cold retardation dramatically slows fermentation
-    // At 38°F, fermentation is about 10-15x slower than at 75°F
-    // Base cold proof time: 12 hours at 38°F
-    const baseColdProofTime = 12.0;
-    
-    // Temperature adjustment for fridge (30-50°F range)
-    // 30°F = very slow (18+ hours), 38°F = ideal (12 hours), 50°F = faster (6-8 hours)
-    const idealFridgeTemp = 38;
-    const fridgeTempDiff = fridgeTemp - idealFridgeTemp;
-    // Each 4°F change adjusts time by ~25%
-    const fridgeTempFactor = Math.pow(0.75, fridgeTempDiff / 4);
-    
-    // Cold proof is less affected by inoculation (slower activity)
-    // But higher inoculation still shortens time slightly
-    const coldInoculationFactor = 1 + ((20 - inoculation) * 0.01);
-    
-    // Calculate cold proof time
-    const proofTime = baseColdProofTime * fridgeTempFactor * coldInoculationFactor;
-    
-    const totalTime = bulkTime + proofTime;
-
-    // Update display
-    bulkTimeEl.textContent = formatTime(bulkTime);
-    proofTimeEl.textContent = formatTime(proofTime);
-    totalTimeEl.textContent = formatTime(totalTime);
-}
-
-function formatTime(hours) {
-    const h = Math.floor(hours);
-    const m = Math.round((hours - h) * 60);
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-// Update values and recalculate
-temperatureInput.addEventListener('input', () => {
-    tempValue.textContent = `${temperatureInput.value}°F`;
-    calculateTimes();
-});
-
-fridgeTemperatureInput.addEventListener('input', () => {
-    fridgeTempValue.textContent = `${fridgeTemperatureInput.value}°F`;
-    calculateTimes();
-});
-
-flourInput.addEventListener('input', () => {
-    flourValue.textContent = `${flourInput.value}g`;
-    calculateTimes();
-});
-
-waterInput.addEventListener('input', () => {
-    waterValue.textContent = `${waterInput.value}g`;
-    calculateTimes();
-});
-
-starterInput.addEventListener('input', () => {
-    starterValue.textContent = `${starterInput.value}g`;
-    calculateTimes();
-});
-
-// Initial calculation
-calculateTimes();
-
-// Recipe List
-function renderRecipes() {
-    const list = document.getElementById('recipes-list');
-    const count = document.getElementById('recipe-count');
-    
-    count.textContent = `${store.recipes.length} saved recipe${store.recipes.length !== 1 ? 's' : ''}`;
-
-    if (store.recipes.length === 0) {
-        list.innerHTML = `
-            <div class="empty-state">
-                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="app">
+        <!-- Tab Navigation -->
+        <nav class="tab-bar">
+            <button class="tab-button active" data-tab="calculator">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Calculator</span>
+            </button>
+            <button class="tab-button" data-tab="recipes">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
-                <h2>No Recipes Yet</h2>
-                <p>Add your first sourdough recipe to get started</p>
-                <button class="btn-primary" onclick="openAddRecipe()">Add Recipe</button>
-            </div>
-        `;
-        return;
-    }
+                <span>Recipes</span>
+            </button>
+        </nav>
 
-    list.innerHTML = store.recipes.map(recipe => `
-        <div class="recipe-card" onclick="openRecipeDetail('${recipe.id}')">
-            <div class="recipe-card-header">
-                <div class="recipe-card-info">
-                    <h3>${escapeHtml(recipe.name)}</h3>
-                    <div class="recipe-date">${formatDate(recipe.dateCreated)}</div>
+        <!-- Calculator View -->
+        <div class="view active" id="calculator-view">
+            <div class="container">
+                <div class="header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <h1>Fermentation Timer</h1>
+                    <p class="subtitle">Calculate your wait time</p>
                 </div>
-                <button class="favorite-button ${recipe.isFavorite ? 'active' : ''}" 
-                        onclick="event.stopPropagation(); toggleFavorite('${recipe.id}')">
+
+                <!-- Mode Selector -->
+                <div class="mode-selector">
+                    <button class="mode-button active" data-mode="counter">Counter Only</button>
+                    <button class="mode-button" data-mode="bulk-cold">Bulk + Cold</button>
+                    <button class="mode-button" data-mode="cold-only">Cold Only</button>
+                </div>
+
+                <div class="input-cards">
+                    <div class="input-card">
+                        <div class="input-header">
+                            <div class="input-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="input-info">
+                                <h3>Dough Temperature</h3>
+                                <p>Final dough temp after mixing</p>
+                            </div>
+                            <div class="input-value" id="temp-value">75°F</div>
+                        </div>
+                        <input type="range" id="temperature" min="65" max="85" value="75" class="slider">
+                    </div>
+
+                    <div class="input-card">
+                        <div class="input-header">
+                            <div class="input-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 3v18h18"></path>
+                                    <path d="m19 9-5 5-4-4-3 3"></path>
+                                </svg>
+                            </div>
+                            <div class="input-info">
+                                <h3>Flour Weight</h3>
+                                <p>Total flour in recipe</p>
+                            </div>
+                            <div class="input-value" id="flour-value">500g</div>
+                        </div>
+                        <input type="range" id="flour-weight" min="100" max="1000" value="500" step="50" class="slider">
+                    </div>
+
+                    <div class="input-card">
+                        <div class="input-header">
+                            <div class="input-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="input-info">
+                                <h3>Water Weight</h3>
+                                <p>Total water in recipe</p>
+                            </div>
+                            <div class="input-value" id="water-value">350g</div>
+                        </div>
+                        <input type="range" id="water-weight" min="50" max="800" value="350" step="10" class="slider">
+                    </div>
+
+                    <div class="input-card">
+                        <div class="input-header">
+                            <div class="input-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="input-info">
+                                <h3>Starter Amount</h3>
+                                <p>Active sourdough starter</p>
+                            </div>
+                            <div class="input-value" id="starter-value">100g</div>
+                        </div>
+                        <input type="range" id="starter-weight" min="20" max="300" value="100" step="10" class="slider">
+                    </div>
+                </div>
+
+                <div class="result-card" id="bulk-result">
+                    <div class="result-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 22h14"></path>
+                            <path d="M5 2h14"></path>
+                            <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path>
+                            <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path>
+                        </svg>
+                        <h2 id="bulk-title">Bulk Fermentation</h2>
+                        <p id="bulk-subtitle" style="font-size: 14px; color: var(--text-secondary); margin-top: 4px;">On the counter</p>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="time-result">
+                        <div class="time-step">
+                            <div class="step-info" style="flex: 1;">
+                                <h4 id="bulk-time-label">Bulk fermentation time</h4>
+                                <p id="bulk-time-desc" style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Until dough doubles</p>
+                            </div>
+                            <div class="step-time" id="bulk-time">4h 0m</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-divider" id="section-divider" style="display: none;">
+                    <div class="divider-line"></div>
+                    <span class="divider-text">Then shape and cold proof</span>
+                    <div class="divider-line"></div>
+                </div>
+
+                <div class="input-card" id="fridge-temp-input" style="margin-top: 20px; display: none;">
+                    <div class="input-header">
+                        <div class="input-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="input-info">
+                            <h3>Fridge Temperature</h3>
+                            <p>Cold proof temperature</p>
+                        </div>
+                        <div class="input-value" id="fridge-temp-value">38°F</div>
+                    </div>
+                    <input type="range" id="fridge-temperature" min="30" max="50" value="38" class="slider">
+                </div>
+
+                <div class="result-card" id="proof-result" style="margin-top: 24px; display: none;">
+                    <div class="result-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                        <h2 id="proof-title">Cold Proof</h2>
+                        <p id="proof-subtitle" style="font-size: 14px; color: var(--text-secondary); margin-top: 4px;">In the fridge</p>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="time-result">
+                        <div class="time-step">
+                            <div class="step-info" style="flex: 1;">
+                                <h4 id="proof-time-label">Final proof time</h4>
+                                <p id="proof-time-desc" style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Overnight in fridge</p>
+                            </div>
+                            <div class="step-time" id="proof-time">12h 0m</div>
+                        </div>
+                    </div>
+                    <div class="divider" id="total-divider"></div>
+                    <div class="total-time" id="total-time-section">
+                        <div>
+                            <h3>Total Time</h3>
+                            <p>From mix to bake</p>
+                        </div>
+                        <div class="total-value" id="total-time">16h 0m</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recipes View -->
+        <div class="view" id="recipes-view">
+            <div class="container">
+                <div class="recipes-header">
+                    <div>
+                        <h1>My Recipes</h1>
+                        <p class="subtitle" id="recipe-count">0 saved recipes</p>
+                    </div>
+                    <button class="add-button" id="add-recipe-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div id="recipes-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Recipe Modal -->
+    <div class="modal" id="recipe-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">New Recipe</h2>
+                <button class="close-button" id="close-modal">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
             </div>
-            ${recipe.notes ? `<div class="recipe-notes">${escapeHtml(recipe.notes)}</div>` : ''}
-            <div class="recipe-card-footer">
-                <span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                    </svg>
-                    Tap to view recipe
-                </span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
+            <form id="recipe-form">
+                <div class="form-group">
+                    <label>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="20" x2="12" y2="10"></line>
+                            <line x1="18" y1="20" x2="18" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="16"></line>
+                        </svg>
+                        Recipe Name
+                    </label>
+                    <input type="text" id="recipe-name" placeholder="e.g., Classic Sourdough" required>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        Ingredients
+                    </label>
+                    <textarea id="recipe-ingredients" rows="6" placeholder="• 500g bread flour&#10;• 350g water&#10;• 100g starter&#10;• 10g salt"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        Instructions
+                    </label>
+                    <textarea id="recipe-instructions" rows="8" placeholder="1. Mix flour and water&#10;2. Add starter and salt&#10;3. Bulk ferment 4-6 hours&#10;..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        Notes (Optional)
+                    </label>
+                    <textarea id="recipe-notes" rows="3" placeholder="Any tips or variations..."></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Save Recipe</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Recipe Detail Modal -->
+    <div class="modal" id="detail-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="detail-name"></h2>
+                <div class="header-buttons">
+                    <button class="icon-button" id="favorite-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                    </button>
+                    <button class="icon-button" id="edit-recipe-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="icon-button" id="delete-recipe-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                    <button class="close-button" id="close-detail">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="detail-content">
+                <p class="detail-date" id="detail-date"></p>
+                <div class="detail-notes" id="detail-notes-section">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        Notes
+                    </h3>
+                    <p id="detail-notes"></p>
+                </div>
+                <div class="detail-section">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        Ingredients
+                    </h3>
+                    <p id="detail-ingredients"></p>
+                </div>
+                <div class="detail-section">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        Instructions
+                    </h3>
+                    <p id="detail-instructions"></p>
+                </div>
             </div>
         </div>
-    `).join('');
-}
+    </div>
 
-function toggleFavorite(id) {
-    store.toggleFavorite(id);
-    renderRecipes();
-}
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Modal Management
-const recipeModal = document.getElementById('recipe-modal');
-const detailModal = document.getElementById('detail-modal');
-const recipeForm = document.getElementById('recipe-form');
-
-document.getElementById('add-recipe-btn').addEventListener('click', openAddRecipe);
-document.getElementById('close-modal').addEventListener('click', closeRecipeModal);
-document.getElementById('close-detail').addEventListener('click', closeDetailModal);
-
-// Close on backdrop click
-recipeModal.addEventListener('click', (e) => {
-    if (e.target === recipeModal) closeRecipeModal();
-});
-
-detailModal.addEventListener('click', (e) => {
-    if (e.target === detailModal) closeDetailModal();
-});
-
-function openAddRecipe() {
-    isEditMode = false;
-    currentRecipeId = null;
-    document.getElementById('modal-title').textContent = 'New Recipe';
-    recipeForm.reset();
-    recipeModal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeRecipeModal() {
-    recipeModal.classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-function closeDetailModal() {
-    detailModal.classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-// Recipe Form Submit
-recipeForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const recipe = {
-        name: document.getElementById('recipe-name').value,
-        ingredients: document.getElementById('recipe-ingredients').value,
-        instructions: document.getElementById('recipe-instructions').value,
-        notes: document.getElementById('recipe-notes').value
-    };
-
-    if (isEditMode && currentRecipeId) {
-        store.update(currentRecipeId, recipe);
-    } else {
-        store.add(recipe);
-    }
-
-    closeRecipeModal();
-    renderRecipes();
-    
-    // Switch to recipes tab
-    document.querySelector('[data-tab="recipes"]').click();
-});
-
-// Recipe Detail View
-function openRecipeDetail(id) {
-    const recipe = store.recipes.find(r => r.id === id);
-    if (!recipe) return;
-
-    currentRecipeId = id;
-
-    document.getElementById('detail-name').textContent = recipe.name;
-    document.getElementById('detail-date').textContent = formatDate(recipe.dateCreated);
-    
-    // Notes section
-    const notesSection = document.getElementById('detail-notes-section');
-    if (recipe.notes) {
-        notesSection.style.display = 'block';
-        document.getElementById('detail-notes').textContent = recipe.notes;
-    } else {
-        notesSection.style.display = 'none';
-    }
-
-    document.getElementById('detail-ingredients').textContent = recipe.ingredients;
-    document.getElementById('detail-instructions').textContent = recipe.instructions;
-
-    // Favorite button
-    const favBtn = document.getElementById('favorite-btn');
-    if (recipe.isFavorite) {
-        favBtn.classList.add('favorite');
-    } else {
-        favBtn.classList.remove('favorite');
-    }
-
-    detailModal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-// Detail Modal Actions
-document.getElementById('favorite-btn').addEventListener('click', () => {
-    if (!currentRecipeId) return;
-    const recipe = store.toggleFavorite(currentRecipeId);
-    const btn = document.getElementById('favorite-btn');
-    
-    if (recipe.isFavorite) {
-        btn.classList.add('favorite');
-    } else {
-        btn.classList.remove('favorite');
-    }
-    
-    renderRecipes();
-});
-
-document.getElementById('edit-recipe-btn').addEventListener('click', () => {
-    if (!currentRecipeId) return;
-    
-    const recipe = store.recipes.find(r => r.id === currentRecipeId);
-    if (!recipe) return;
-
-    isEditMode = true;
-    document.getElementById('modal-title').textContent = 'Edit Recipe';
-    document.getElementById('recipe-name').value = recipe.name;
-    document.getElementById('recipe-ingredients').value = recipe.ingredients;
-    document.getElementById('recipe-instructions').value = recipe.instructions;
-    document.getElementById('recipe-notes').value = recipe.notes;
-
-    closeDetailModal();
-    recipeModal.classList.add('active');
-});
-
-document.getElementById('delete-recipe-btn').addEventListener('click', () => {
-    if (!currentRecipeId) return;
-    
-    if (confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
-        store.delete(currentRecipeId);
-        closeDetailModal();
-        renderRecipes();
-    }
-});
-
-// Initialize
-renderRecipes();
-
-// Prevent zoom on double tap
-let lastTouchEnd = 0;
-document.addEventListener('touchend', (event) => {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) {
-        event.preventDefault();
-    }
-    lastTouchEnd = now;
-}, false);
+    <script src="app.js"></script>
+</body>
+</html>
 
