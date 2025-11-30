@@ -205,8 +205,8 @@ function calculateTimes() {
     // Base cold proof time: 12 hours at 38°F
     const baseColdProofTime = 12.0;
     
-    // Temperature adjustment for fridge (34-45°F range)
-    // 34°F = slower (14-16 hours), 38°F = ideal (12 hours), 45°F = faster (8-10 hours)
+    // Temperature adjustment for fridge (30-50°F range)
+    // 30°F = very slow (18+ hours), 38°F = ideal (12 hours), 50°F = faster (6-8 hours)
     const idealFridgeTemp = 38;
     const fridgeTempDiff = fridgeTemp - idealFridgeTemp;
     // Each 4°F change adjusts time by ~25%
@@ -480,5 +480,4 @@ document.addEventListener('touchend', (event) => {
     }
     lastTouchEnd = now;
 }, false);
-
 
