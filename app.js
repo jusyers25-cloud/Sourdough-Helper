@@ -155,12 +155,14 @@ let currentMode = 'counter'; // 'counter', 'bulk-cold', 'cold-only'
 
 const temperatureInput = document.getElementById('temperature');
 const fridgeTemperatureInput = document.getElementById('fridge-temperature');
+const fridgeTemperatureMainInput = document.getElementById('fridge-temperature-main');
 const flourInput = document.getElementById('flour-weight');
 const waterInput = document.getElementById('water-weight');
 const starterInput = document.getElementById('starter-weight');
 
 const tempValue = document.getElementById('temp-value');
 const fridgeTempValue = document.getElementById('fridge-temp-value');
+const fridgeTempValueMain = document.getElementById('fridge-temp-value-main');
 const flourValue = document.getElementById('flour-value');
 const waterValue = document.getElementById('water-value');
 const starterValue = document.getElementById('starter-value');
@@ -184,6 +186,8 @@ modeButtons.forEach(button => {
 function updateUIForMode() {
     const sectionDivider = document.getElementById('section-divider');
     const fridgeTempInput = document.getElementById('fridge-temp-input');
+    const fridgeTempMainInput = document.getElementById('fridge-temp-main');
+    const doughTempInput = document.getElementById('dough-temp-input');
     const bulkResult = document.getElementById('bulk-result');
     const proofResult = document.getElementById('proof-result');
     
@@ -202,6 +206,8 @@ function updateUIForMode() {
     
     if (currentMode === 'counter') {
         // Counter only mode
+        doughTempInput.style.display = 'block';
+        fridgeTempMainInput.style.display = 'none';
         sectionDivider.style.display = 'none';
         fridgeTempInput.style.display = 'none';
         proofResult.style.display = 'none';
@@ -214,6 +220,8 @@ function updateUIForMode() {
         
     } else if (currentMode === 'bulk-cold') {
         // Bulk on counter, then cold proof
+        doughTempInput.style.display = 'block';
+        fridgeTempMainInput.style.display = 'none';
         sectionDivider.style.display = 'flex';
         fridgeTempInput.style.display = 'block';
         proofResult.style.display = 'block';
@@ -233,9 +241,11 @@ function updateUIForMode() {
         totalTimeSection.style.display = 'flex';
         
     } else if (currentMode === 'cold-only') {
-        // Cold proof only
+        // Cold only mode - hide dough temp, show fridge temp in main section
+        doughTempInput.style.display = 'none';
+        fridgeTempMainInput.style.display = 'block';
         sectionDivider.style.display = 'none';
-        fridgeTempInput.style.display = 'block';
+        fridgeTempInput.style.display = 'none';
         proofResult.style.display = 'none';
         bulkResult.style.display = 'block';
         
@@ -342,7 +352,20 @@ temperatureInput.addEventListener('input', () => {
 });
 
 fridgeTemperatureInput.addEventListener('input', () => {
-    fridgeTempValue.textContent = `${fridgeTemperatureInput.value}°F`;
+    const value = fridgeTemperatureInput.value;
+    fridgeTempValue.textContent = `${value}°F`;
+    // Sync with main fridge input
+    fridgeTemperatureMainInput.value = value;
+    fridgeTempValueMain.textContent = `${value}°F`;
+    calculateTimes();
+});
+
+fridgeTemperatureMainInput.addEventListener('input', () => {
+    const value = fridgeTemperatureMainInput.value;
+    fridgeTempValueMain.textContent = `${value}°F`;
+    // Sync with separate fridge input
+    fridgeTemperatureInput.value = value;
+    fridgeTempValue.textContent = `${value}°F`;
     calculateTimes();
 });
 
