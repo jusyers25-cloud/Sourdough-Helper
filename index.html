@@ -62,7 +62,7 @@
                 </div>
 
                 <div class="input-cards">
-                    <div class="input-card">
+                    <div class="input-card" id="dough-temp-input">
                         <div class="input-header">
                             <div class="input-icon">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -76,6 +76,22 @@
                             <div class="input-value" id="temp-value">75°F</div>
                         </div>
                         <input type="range" id="temperature" min="65" max="85" value="75" class="slider">
+                    </div>
+
+                    <div class="input-card" id="fridge-temp-main" style="display: none;">
+                        <div class="input-header">
+                            <div class="input-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="input-info">
+                                <h3>Fridge Temperature</h3>
+                                <p>Cold fermentation temperature</p>
+                            </div>
+                            <div class="input-value" id="fridge-temp-value-main">38°F</div>
+                        </div>
+                        <input type="range" id="fridge-temperature-main" min="30" max="50" value="38" class="slider">
                     </div>
 
                     <div class="input-card">
@@ -369,5 +385,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
-
