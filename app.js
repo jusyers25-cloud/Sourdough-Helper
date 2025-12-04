@@ -27,11 +27,47 @@ function showSplashScreen() {
 // Show splash on load
 window.addEventListener('load', showSplashScreen);
 
-// Register Service Worker
+// Register Service Worker with auto-update
 if ('serviceWorker' in navigator) {
+    let refreshing = false;
+    
     navigator.serviceWorker.register('sw.js')
-        .then(() => console.log('Service Worker registered'))
+        .then(registration => {
+            console.log('Service Worker registered');
+            
+            // Check for updates every time the app is opened
+            registration.update();
+            
+            // Check for updates periodically (every 60 seconds)
+            setInterval(() => {
+                registration.update();
+            }, 60000);
+            
+            // Listen for updates
+            registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        // New service worker is ready, reload to get updates
+                        console.log('New version available! Reloading...');
+                        if (!refreshing) {
+                            refreshing = true;
+                            window.location.reload();
+                        }
+                    }
+                });
+            });
+        })
         .catch(err => console.log('Service Worker registration failed', err));
+    
+    // Reload page when new service worker takes control
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+        }
+    });
 }
 
 // Recipe Storage
@@ -606,4 +642,3 @@ document.addEventListener('touchend', (event) => {
     }
     lastTouchEnd = now;
 }, false);
-
