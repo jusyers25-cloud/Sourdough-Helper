@@ -99,12 +99,18 @@ class AuthManager {
 
     async signUp(email, password) {
         try {
+            // Normalize email to lowercase
+            const normalizedEmail = email.toLowerCase().trim();
+            
             // Simple hash of password (in production, use proper hashing)
             const passwordHash = await this.hashPassword(password);
             const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             
-            // Check if user already exists in Supabase
-            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=email&limit=1`, {
+            console.log('📝 Signing up with email:', normalizedEmail);
+            console.log('🔐 Password hash:', passwordHash);
+            
+            // Check if user already exists in Supabase (case-insensitive)
+            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?email=ilike.${encodeURIComponent(normalizedEmail)}&select=email&limit=1`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
@@ -116,7 +122,7 @@ class AuthManager {
                 throw new Error('Email already registered');
             }
             
-            // Create user in Supabase
+            // Create user in Supabase with normalized email
             const createResponse = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
                 method: 'POST',
                 headers: {
@@ -127,7 +133,7 @@ class AuthManager {
                 },
                 body: JSON.stringify({
                     id: userId,
-                    email: email,
+                    email: normalizedEmail,
                     password_hash: passwordHash
                 })
             });
@@ -138,11 +144,11 @@ class AuthManager {
                 throw new Error('Failed to create account');
             }
             
-            // Store credentials locally
-            this.userEmail = email;
+            // Store credentials locally with normalized email
+            this.userEmail = normalizedEmail;
             this.userId = userId;
             localStorage.setItem('sourdough-user', JSON.stringify({ 
-                email: email, 
+                email: normalizedEmail, 
                 id: userId,
                 passwordHash: passwordHash 
             }));
@@ -157,10 +163,11 @@ class AuthManager {
 
     async signIn(email, password) {
         try {
-            const passwordHash = await this.hashPassword(password);
+            // Normalize email to lowercase for case-insensitive comparison
+            const normalizedEmail = email.toLowerCase().trim();
             
-            // Check if user exists in Supabase users table
-            const userResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=*&limit=1`, {
+            // Check if user exists in Supabase users table (case-insensitive)
+            const userResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?email=ilike.${encodeURIComponent(normalizedEmail)}&select=*&limit=1`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
@@ -168,10 +175,12 @@ class AuthManager {
             });
             
             if (!userResponse.ok) {
+                console.error('User lookup failed:', userResponse.status);
                 throw new Error('Failed to verify credentials');
             }
             
             const users = await userResponse.json();
+            console.log('📧 User lookup result:', users.length > 0 ? 'Found' : 'Not found');
             
             if (!users || users.length === 0) {
                 throw new Error('Invalid email or password');
@@ -179,8 +188,15 @@ class AuthManager {
             
             const user = users[0];
             
-            // Verify password hash
+            // Hash the provided password and compare with stored hash
+            const passwordHash = await this.hashPassword(password);
+            console.log('🔐 Generated hash length:', passwordHash.length);
+            console.log('🔐 Stored hash length:', user.password_hash.length);
+            console.log('🔐 Hashes match:', passwordHash === user.password_hash);
+            
+            // Verify password hash matches what's in the database
             if (user.password_hash !== passwordHash) {
+                console.error('❌ Password hash mismatch');
                 throw new Error('Invalid email or password');
             }
             
@@ -1025,4 +1041,3 @@ document.addEventListener('touchend', (event) => {
     }
     lastTouchEnd = now;
 }, false);
-
