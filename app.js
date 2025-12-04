@@ -74,10 +74,106 @@ if ('serviceWorker' in navigator) {
 const SUPABASE_URL = 'https://yelrnhvhxgoqtbszvqzt.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbHJuaHZoeGdvcXRic3p2cXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MDExODksImV4cCI6MjA4MDM3NzE4OX0.IOIU9Eob1JvcMZ0mjcQyjmSOKasYjGcwA3ZY5k5nJKE';
 
+// Authentication Manager
+class AuthManager {
+    constructor() {
+        this.userEmail = null;
+        this.userId = null;
+        this.checkAuth();
+    }
+
+    checkAuth() {
+        const stored = localStorage.getItem('sourdough-user');
+        if (stored) {
+            const user = JSON.parse(stored);
+            this.userEmail = user.email;
+            this.userId = user.id;
+            return true;
+        }
+        return false;
+    }
+
+    isAuthenticated() {
+        return this.userEmail !== null;
+    }
+
+    async signUp(email, password) {
+        try {
+            // Simple hash of password (in production, use proper hashing)
+            const passwordHash = await this.hashPassword(password);
+            const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // Check if user exists
+            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes?user_email=eq.${encodeURIComponent(email)}&select=user_email&limit=1`, {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+            
+            const existing = await checkResponse.json();
+            if (existing && existing.length > 0) {
+                throw new Error('Email already registered');
+            }
+            
+            // Store user credentials
+            this.userEmail = email;
+            this.userId = userId;
+            localStorage.setItem('sourdough-user', JSON.stringify({ 
+                email: email, 
+                id: userId,
+                passwordHash: passwordHash 
+            }));
+            
+            return true;
+        } catch (error) {
+            console.error('Sign up failed:', error);
+            throw error;
+        }
+    }
+
+    async signIn(email, password) {
+        try {
+            const passwordHash = await this.hashPassword(password);
+            
+            // Check stored credentials
+            const stored = localStorage.getItem('sourdough-user');
+            if (stored) {
+                const user = JSON.parse(stored);
+                if (user.email === email && user.passwordHash === passwordHash) {
+                    this.userEmail = email;
+                    this.userId = user.id;
+                    return true;
+                }
+            }
+            
+            throw new Error('Invalid email or password');
+        } catch (error) {
+            console.error('Sign in failed:', error);
+            throw error;
+        }
+    }
+
+    signOut() {
+        this.userEmail = null;
+        this.userId = null;
+        localStorage.removeItem('sourdough-user');
+        localStorage.removeItem('sourdough-recipes');
+    }
+
+    async hashPassword(password) {
+        // Simple hash for demo (in production, use bcrypt or similar)
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password + 'sourdough_salt_2024');
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+}
+
 // Recipe Storage with Supabase Cloud Sync
 class RecipeStore {
     constructor() {
-        this.deviceId = this.getOrCreateDeviceId();
         this.supabaseReady = false;
         this.syncQueue = [];
         this.recipes = [];
@@ -86,38 +182,34 @@ class RecipeStore {
         this.initSupabase();
     }
 
-    // Generate persistent device ID
-    getOrCreateDeviceId() {
-        let deviceId = localStorage.getItem('sourdough-device-id');
-        if (!deviceId) {
-            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('sourdough-device-id', deviceId);
-        }
-        return deviceId;
-    }
-
     // Initialize Supabase connection
     async initSupabase() {
+        // Check if user is authenticated
+        if (!auth.isAuthenticated()) {
+            showAuthScreen();
+            return;
+        }
+
         try {
-            // First, try to fetch from cloud
+            // Fetch recipes for this user
             const cloudRecipes = await this.fetchFromSupabase();
             
             if (cloudRecipes && cloudRecipes.length > 0) {
                 // Cloud has recipes - use them
                 this.recipes = cloudRecipes;
                 this.save(false); // Save to localStorage only
-                console.log('✅ Recipes restored from Supabase cloud');
-                renderRecipes(); // Update UI
+                console.log('✅ Recipes restored from cloud');
+                renderRecipes();
             } else {
-                // No cloud recipes, check localStorage
+                // Check localStorage as fallback
                 const localRecipes = this.load();
                 
                 if (localRecipes && localRecipes.length > 0) {
                     // Have local recipes - upload to cloud
                     this.recipes = localRecipes;
                     await this.syncAllToSupabase();
-                    console.log('✅ Local recipes uploaded to Supabase');
-                    renderRecipes(); // Update UI
+                    console.log('✅ Local recipes uploaded to cloud');
+                    renderRecipes();
                 } else {
                     // No recipes - start with empty list
                     this.recipes = [];
@@ -141,14 +233,14 @@ class RecipeStore {
                 this.recipes = [];
             }
             this.supabaseReady = false;
-            renderRecipes(); // Update UI
+            renderRecipes();
         }
     }
 
-    // Fetch all recipes from Supabase
+    // Fetch all recipes from Supabase for this user
     async fetchFromSupabase() {
         try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/recipes?device_id=eq.${this.deviceId}&select=*`, {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/recipes?user_email=eq.${encodeURIComponent(auth.userEmail)}&select=*`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
@@ -173,6 +265,8 @@ class RecipeStore {
         }
     }
 
+
+
     // Sync single recipe to Supabase
     async syncToSupabase(recipe) {
         if (!this.supabaseReady) {
@@ -182,7 +276,7 @@ class RecipeStore {
 
         try {
             // Check if recipe already exists in cloud
-            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${recipe.id}&device_id=eq.${this.deviceId}`, {
+            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${recipe.id}&user_email=eq.${encodeURIComponent(auth.userEmail)}`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
@@ -193,7 +287,8 @@ class RecipeStore {
             
             const recipeData = {
                 id: recipe.id,
-                device_id: this.deviceId,
+                user_email: auth.userEmail,
+                user_id: auth.userId,
                 name: recipe.name,
                 ingredients: recipe.ingredients,
                 instructions: recipe.instructions,
@@ -205,7 +300,7 @@ class RecipeStore {
 
             if (existing && existing.length > 0) {
                 // Update existing recipe
-                await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${recipe.id}&device_id=eq.${this.deviceId}`, {
+                await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${recipe.id}&user_email=eq.${encodeURIComponent(auth.userEmail)}`, {
                     method: 'PATCH',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -243,7 +338,7 @@ class RecipeStore {
     // Delete recipe from Supabase
     async deleteFromSupabase(id) {
         try {
-            await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${id}&device_id=eq.${this.deviceId}`, {
+            await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${id}&user_email=eq.${encodeURIComponent(auth.userEmail)}`, {
                 method: 'DELETE',
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
@@ -306,9 +401,85 @@ class RecipeStore {
 }
 
 // Initialize
+const auth = new AuthManager();
 const store = new RecipeStore();
 let currentRecipeId = null;
 let isEditMode = false;
+
+// Auth Screen Functions
+function showAuthScreen() {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-content').style.display = 'none';
+}
+
+function hideAuthScreen() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-content').style.display = 'flex';
+}
+
+function switchToSignUp() {
+    document.getElementById('signin-form').style.display = 'none';
+    document.getElementById('signup-form').style.display = 'block';
+}
+
+function switchToSignIn() {
+    document.getElementById('signup-form').style.display = 'none';
+    document.getElementById('signin-form').style.display = 'block';
+}
+
+async function handleSignIn(e) {
+    e.preventDefault();
+    const email = document.getElementById('signin-email').value;
+    const password = document.getElementById('signin-password').value;
+    const errorEl = document.getElementById('signin-error');
+    
+    try {
+        await auth.signIn(email, password);
+        hideAuthScreen();
+        await store.initSupabase();
+    } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.style.display = 'block';
+    }
+}
+
+async function handleSignUp(e) {
+    e.preventDefault();
+    const email = document.getElementById('signup-email').value;
+    const password = document.getElementById('signup-password').value;
+    const confirmPassword = document.getElementById('signup-confirm-password').value;
+    const errorEl = document.getElementById('signup-error');
+    
+    if (password !== confirmPassword) {
+        errorEl.textContent = 'Passwords do not match';
+        errorEl.style.display = 'block';
+        return;
+    }
+    
+    if (password.length < 6) {
+        errorEl.textContent = 'Password must be at least 6 characters';
+        errorEl.style.display = 'block';
+        return;
+    }
+    
+    try {
+        await auth.signUp(email, password);
+        hideAuthScreen();
+        await store.initSupabase();
+    } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.style.display = 'block';
+    }
+}
+
+function handleSignOut() {
+    if (confirm('Are you sure you want to sign out?')) {
+        auth.signOut();
+        store.recipes = [];
+        showAuthScreen();
+        renderRecipes();
+    }
+}
 
 // Tab Navigation
 document.querySelectorAll('.tab-button').forEach(button => {
