@@ -1,12 +1,12 @@
-const CACHE_NAME = 'sourdough-helper-v1';
+const CACHE_NAME = 'sourdough-helper-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/app.js',
-  '/manifest.json',
-  '/images/icon-192.png',
-  '/images/icon-512.png'
+  '/sourdough-helper/',
+  '/sourdough-helper/index.html',
+  '/sourdough-helper/styles.css',
+  '/sourdough-helper/app.js',
+  '/sourdough-helper/manifest.json',
+  '/sourdough-helper/images/icon-192.png',
+  '/sourdough-helper/images/icon-512.png'
 ];
 
 // Install service worker
@@ -15,31 +15,34 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
   );
+  // Force the waiting service worker to become the active service worker
   self.skipWaiting();
 });
 
-// Fetch from cache, fallback to network
+// Network-first strategy: Try network first, fallback to cache
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then(response => {
-        if (response) {
+        // Don't cache non-successful responses
+        if (!response || response.status !== 200 || response.type === 'error') {
           return response;
         }
-        return fetch(event.request).then(response => {
-          // Don't cache non-successful responses
-          if (!response || response.status !== 200 || response.type === 'error') {
-            return response;
-          }
 
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
+        // Clone the response
+        const responseToCache = response.clone();
+        
+        // Update cache with fresh content
+        caches.open(CACHE_NAME)
+          .then(cache => {
+            cache.put(event.request, responseToCache);
+          });
 
-          return response;
-        });
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try cache
+        return caches.match(event.request);
       })
   );
 });
@@ -59,3 +62,4 @@ self.addEventListener('activate', event => {
   );
   self.clients.claim();
 });
+
