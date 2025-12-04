@@ -119,9 +119,10 @@ class RecipeStore {
                     console.log('✅ Local recipes uploaded to Supabase');
                     renderRecipes(); // Update UI
                 } else {
-                    // No recipes anywhere - add samples (local only, don't sync)
-                    this.addSampleRecipes();
-                    console.log('✅ Sample recipes added (local only)');
+                    // No recipes - start with empty list
+                    this.recipes = [];
+                    console.log('✅ Ready - no recipes yet');
+                    renderRecipes();
                 }
             }
             
@@ -137,7 +138,7 @@ class RecipeStore {
             // Fallback to localStorage
             this.recipes = this.load();
             if (this.recipes.length === 0) {
-                this.addSampleRecipes();
+                this.recipes = [];
             }
             this.supabaseReady = false;
             renderRecipes(); // Update UI
@@ -301,54 +302,6 @@ class RecipeStore {
             return recipe;
         }
         return null;
-    }
-
-    addSampleRecipes() {
-        // Add sample recipes with generated IDs
-        const recipe1 = {
-            id: Date.now().toString(),
-            name: 'Classic Sourdough Boule',
-            ingredients: `• 500g bread flour
-• 350g water (70% hydration)
-• 100g active sourdough starter
-• 10g salt`,
-            instructions: `1. Mix flour and water, autolyse for 30 minutes
-2. Add starter and salt, mix until combined
-3. Bulk ferment 4-6 hours with stretch & folds every 30 min
-4. Shape and place in banneton
-5. Cold proof in fridge overnight
-6. Bake at 450°F in Dutch oven: 20 min covered, 25 min uncovered`,
-            notes: 'Perfect for beginners! Adjust hydration if too sticky.',
-            dateCreated: new Date().toISOString(),
-            isFavorite: true
-        };
-
-        const recipe2 = {
-            id: (Date.now() + 1).toString(),
-            name: 'Whole Wheat Sandwich Loaf',
-            ingredients: `• 300g bread flour
-• 200g whole wheat flour
-• 350g water
-• 100g active starter
-• 10g salt
-• 20g honey (optional)`,
-            instructions: `1. Mix all ingredients except salt
-2. Autolyse 30 minutes
-3. Add salt, knead 5 minutes
-4. Bulk ferment 4-5 hours
-5. Shape into loaf pan
-6. Proof 2-3 hours
-7. Bake at 375°F for 40-45 minutes`,
-            notes: 'Great for sandwiches and toast!',
-            dateCreated: new Date().toISOString(),
-            isFavorite: false
-        };
-
-        this.recipes = [recipe1, recipe2];
-        
-        // Save to localStorage only (don't sync to cloud)
-        this.save(false);
-        renderRecipes();
     }
 }
 
