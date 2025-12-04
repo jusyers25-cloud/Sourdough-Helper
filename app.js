@@ -70,12 +70,174 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// Recipe Storage
+// Supabase Configuration
+const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with your Supabase project URL
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your Supabase anon key
+
+// Recipe Storage with Supabase Cloud Sync
 class RecipeStore {
     constructor() {
+        this.deviceId = this.getOrCreateDeviceId();
+        this.supabaseReady = false;
+        this.syncQueue = [];
+        
         this.recipes = this.load();
-        if (this.recipes.length === 0) {
-            this.addSampleRecipes();
+        
+        // Initialize Supabase and sync
+        this.initSupabase().then(() => {
+            if (this.recipes.length === 0) {
+                this.addSampleRecipes();
+            }
+        });
+    }
+
+    // Generate persistent device ID
+    getOrCreateDeviceId() {
+        let deviceId = localStorage.getItem('sourdough-device-id');
+        if (!deviceId) {
+            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('sourdough-device-id', deviceId);
+        }
+        return deviceId;
+    }
+
+    // Initialize Supabase connection
+    async initSupabase() {
+        try {
+            // Check if already have recipes in cloud
+            const cloudRecipes = await this.fetchFromSupabase();
+            
+            if (cloudRecipes && cloudRecipes.length > 0) {
+                // Use cloud recipes if we have any
+                this.recipes = cloudRecipes;
+                this.save(false); // Save to localStorage only, don't sync back
+                console.log('✅ Recipes loaded from Supabase cloud');
+            } else if (this.recipes.length > 0) {
+                // Upload local recipes to cloud if we have any
+                await this.syncAllToSupabase();
+                console.log('✅ Local recipes uploaded to Supabase');
+            }
+            
+            this.supabaseReady = true;
+            
+            // Process any queued syncs
+            while (this.syncQueue.length > 0) {
+                const recipe = this.syncQueue.shift();
+                await this.syncToSupabase(recipe);
+            }
+        } catch (error) {
+            console.log('Supabase init:', error.message);
+            this.supabaseReady = false;
+        }
+    }
+
+    // Fetch all recipes from Supabase
+    async fetchFromSupabase() {
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/recipes?device_id=eq.${this.deviceId}&select=*`, {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+            
+            if (!response.ok) throw new Error('Failed to fetch');
+            
+            const data = await response.json();
+            return data.map(item => ({
+                id: item.id,
+                name: item.name,
+                ingredients: item.ingredients,
+                instructions: item.instructions,
+                notes: item.notes,
+                dateCreated: item.date_created,
+                isFavorite: item.is_favorite
+            }));
+        } catch (error) {
+            console.log('Fetch from Supabase failed:', error);
+            return null;
+        }
+    }
+
+    // Sync single recipe to Supabase
+    async syncToSupabase(recipe) {
+        if (!this.supabaseReady) {
+            this.syncQueue.push(recipe);
+            return;
+        }
+
+        try {
+            // Check if recipe already exists in cloud
+            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${recipe.id}&device_id=eq.${this.deviceId}`, {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+            
+            const existing = await checkResponse.json();
+            
+            const recipeData = {
+                id: recipe.id,
+                device_id: this.deviceId,
+                name: recipe.name,
+                ingredients: recipe.ingredients,
+                instructions: recipe.instructions,
+                notes: recipe.notes,
+                date_created: recipe.dateCreated,
+                is_favorite: recipe.isFavorite,
+                updated_at: new Date().toISOString()
+            };
+
+            if (existing && existing.length > 0) {
+                // Update existing recipe
+                await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${recipe.id}&device_id=eq.${this.deviceId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify(recipeData)
+                });
+            } else {
+                // Insert new recipe
+                await fetch(`${SUPABASE_URL}/rest/v1/recipes`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify(recipeData)
+                });
+            }
+        } catch (error) {
+            console.log('Sync to Supabase failed:', error);
+        }
+    }
+
+    // Sync all recipes to Supabase
+    async syncAllToSupabase() {
+        for (const recipe of this.recipes) {
+            await this.syncToSupabase(recipe);
+        }
+    }
+
+    // Delete recipe from Supabase
+    async deleteFromSupabase(id) {
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${id}&device_id=eq.${this.deviceId}`, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+        } catch (error) {
+            console.log('Delete from Supabase failed:', error);
         }
     }
 
@@ -84,8 +246,13 @@ class RecipeStore {
         return stored ? JSON.parse(stored) : [];
     }
 
-    save() {
+    save(syncToCloud = true) {
         localStorage.setItem('sourdough-recipes', JSON.stringify(this.recipes));
+        
+        // Sync to Supabase
+        if (syncToCloud) {
+            this.syncAllToSupabase();
+        }
     }
 
     add(recipe) {
@@ -110,6 +277,7 @@ class RecipeStore {
     delete(id) {
         this.recipes = this.recipes.filter(r => r.id !== id);
         this.save();
+        this.deleteFromSupabase(id);
     }
 
     toggleFavorite(id) {
