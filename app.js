@@ -103,8 +103,8 @@ class AuthManager {
             const passwordHash = await this.hashPassword(password);
             const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             
-            // Check if user exists
-            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes?user_email=eq.${encodeURIComponent(email)}&select=user_email&limit=1`, {
+            // Check if user already exists in Supabase
+            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=email&limit=1`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
@@ -116,7 +116,29 @@ class AuthManager {
                 throw new Error('Email already registered');
             }
             
-            // Store user credentials
+            // Create user in Supabase
+            const createResponse = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
+                    id: userId,
+                    email: email,
+                    password_hash: passwordHash
+                })
+            });
+            
+            if (!createResponse.ok) {
+                const errorText = await createResponse.text();
+                console.error('Failed to create user:', errorText);
+                throw new Error('Failed to create account');
+            }
+            
+            // Store credentials locally
             this.userEmail = email;
             this.userId = userId;
             localStorage.setItem('sourdough-user', JSON.stringify({ 
@@ -125,6 +147,7 @@ class AuthManager {
                 passwordHash: passwordHash 
             }));
             
+            console.log('✅ User created successfully');
             return true;
         } catch (error) {
             console.error('Sign up failed:', error);
@@ -136,49 +159,42 @@ class AuthManager {
         try {
             const passwordHash = await this.hashPassword(password);
             
-            // First, check if this email has recipes in the cloud (user exists)
-            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes?user_email=eq.${encodeURIComponent(email)}&select=user_id&limit=1`, {
+            // Check if user exists in Supabase users table
+            const userResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=*&limit=1`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                 }
             });
             
-            const existing = await checkResponse.json();
+            if (!userResponse.ok) {
+                throw new Error('Failed to verify credentials');
+            }
             
-            // Check if we have stored credentials locally
-            const stored = localStorage.getItem('sourdough-user');
-            let storedUser = stored ? JSON.parse(stored) : null;
+            const users = await userResponse.json();
             
-            // Verify password hash
-            if (storedUser && storedUser.email === email && storedUser.passwordHash === passwordHash) {
-                // Credentials match
-                this.userEmail = email;
-                this.userId = storedUser.id;
-                return true;
-            } else if (existing && existing.length > 0) {
-                // User exists in cloud, but no local creds or wrong password locally
-                // This means they signed up on this device before, verify the password
-                if (storedUser && storedUser.email === email) {
-                    // Local credentials exist but password is wrong
-                    throw new Error('Invalid email or password');
-                } else {
-                    // No local credentials, but user exists in cloud
-                    // Store new credentials (this is signing in from a different device)
-                    const userId = existing[0].user_id;
-                    localStorage.setItem('sourdough-user', JSON.stringify({
-                        email: email,
-                        id: userId,
-                        passwordHash: passwordHash
-                    }));
-                    this.userEmail = email;
-                    this.userId = userId;
-                    return true;
-                }
-            } else {
-                // User doesn't exist at all
+            if (!users || users.length === 0) {
                 throw new Error('Invalid email or password');
             }
+            
+            const user = users[0];
+            
+            // Verify password hash
+            if (user.password_hash !== passwordHash) {
+                throw new Error('Invalid email or password');
+            }
+            
+            // Credentials are valid - store locally and authenticate
+            this.userEmail = user.email;
+            this.userId = user.id;
+            localStorage.setItem('sourdough-user', JSON.stringify({ 
+                email: user.email, 
+                id: user.id,
+                passwordHash: user.password_hash 
+            }));
+            
+            console.log('✅ Sign in successful');
+            return true;
         } catch (error) {
             console.error('Sign in failed:', error);
             throw error;
@@ -1009,3 +1025,4 @@ document.addEventListener('touchend', (event) => {
     }
     lastTouchEnd = now;
 }, false);
+
