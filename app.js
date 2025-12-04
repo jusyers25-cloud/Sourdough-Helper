@@ -71,8 +71,8 @@ if ('serviceWorker' in navigator) {
 }
 
 // Supabase Configuration
-const SUPABASE_URL = 'https://yelrnhvhxgoqtbszvqzt.supabase.co'; // Replace with your Supabase project URL
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbHJuaHZoeGdvcXRic3p2cXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MDExODksImV4cCI6MjA4MDM3NzE4OX0.IOIU9Eob1JvcMZ0mjcQyjmSOKasYjGcwA3ZY5k5nJKE'; // Replace with your Supabase anon key
+const SUPABASE_URL = 'https://yelrnhvhxgoqtbszvqzt.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbHJuaHZoeGdvcXRic3p2cXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MDExODksImV4cCI6MjA4MDM3NzE4OX0.IOIU9Eob1JvcMZ0mjcQyjmSOKasYjGcwA3ZY5k5nJKE';
 
 // Recipe Storage with Supabase Cloud Sync
 class RecipeStore {
@@ -80,15 +80,10 @@ class RecipeStore {
         this.deviceId = this.getOrCreateDeviceId();
         this.supabaseReady = false;
         this.syncQueue = [];
+        this.recipes = [];
         
-        this.recipes = this.load();
-        
-        // Initialize Supabase and sync
-        this.initSupabase().then(() => {
-            if (this.recipes.length === 0) {
-                this.addSampleRecipes();
-            }
-        });
+        // Initialize Supabase first, then load recipes
+        this.initSupabase();
     }
 
     // Generate persistent device ID
@@ -104,18 +99,30 @@ class RecipeStore {
     // Initialize Supabase connection
     async initSupabase() {
         try {
-            // Check if already have recipes in cloud
+            // First, try to fetch from cloud
             const cloudRecipes = await this.fetchFromSupabase();
             
             if (cloudRecipes && cloudRecipes.length > 0) {
-                // Use cloud recipes if we have any
+                // Cloud has recipes - use them
                 this.recipes = cloudRecipes;
-                this.save(false); // Save to localStorage only, don't sync back
-                console.log('✅ Recipes loaded from Supabase cloud');
-            } else if (this.recipes.length > 0) {
-                // Upload local recipes to cloud if we have any
-                await this.syncAllToSupabase();
-                console.log('✅ Local recipes uploaded to Supabase');
+                this.save(false); // Save to localStorage only
+                console.log('✅ Recipes restored from Supabase cloud');
+                renderRecipes(); // Update UI
+            } else {
+                // No cloud recipes, check localStorage
+                const localRecipes = this.load();
+                
+                if (localRecipes && localRecipes.length > 0) {
+                    // Have local recipes - upload to cloud
+                    this.recipes = localRecipes;
+                    await this.syncAllToSupabase();
+                    console.log('✅ Local recipes uploaded to Supabase');
+                    renderRecipes(); // Update UI
+                } else {
+                    // No recipes anywhere - add samples (local only, don't sync)
+                    this.addSampleRecipes();
+                    console.log('✅ Sample recipes added (local only)');
+                }
             }
             
             this.supabaseReady = true;
@@ -126,8 +133,14 @@ class RecipeStore {
                 await this.syncToSupabase(recipe);
             }
         } catch (error) {
-            console.log('Supabase init:', error.message);
+            console.log('Supabase init failed:', error.message);
+            // Fallback to localStorage
+            this.recipes = this.load();
+            if (this.recipes.length === 0) {
+                this.addSampleRecipes();
+            }
             this.supabaseReady = false;
+            renderRecipes(); // Update UI
         }
     }
 
@@ -291,7 +304,9 @@ class RecipeStore {
     }
 
     addSampleRecipes() {
-        this.add({
+        // Add sample recipes with generated IDs
+        const recipe1 = {
+            id: Date.now().toString(),
             name: 'Classic Sourdough Boule',
             ingredients: `• 500g bread flour
 • 350g water (70% hydration)
@@ -303,10 +318,13 @@ class RecipeStore {
 4. Shape and place in banneton
 5. Cold proof in fridge overnight
 6. Bake at 450°F in Dutch oven: 20 min covered, 25 min uncovered`,
-            notes: 'Perfect for beginners! Adjust hydration if too sticky.'
-        });
+            notes: 'Perfect for beginners! Adjust hydration if too sticky.',
+            dateCreated: new Date().toISOString(),
+            isFavorite: true
+        };
 
-        this.add({
+        const recipe2 = {
+            id: (Date.now() + 1).toString(),
             name: 'Whole Wheat Sandwich Loaf',
             ingredients: `• 300g bread flour
 • 200g whole wheat flour
@@ -321,12 +339,16 @@ class RecipeStore {
 5. Shape into loaf pan
 6. Proof 2-3 hours
 7. Bake at 375°F for 40-45 minutes`,
-            notes: 'Great for sandwiches and toast!'
-        });
+            notes: 'Great for sandwiches and toast!',
+            dateCreated: new Date().toISOString(),
+            isFavorite: false
+        };
 
-        // Mark first recipe as favorite
-        this.recipes[0].isFavorite = true;
-        this.save();
+        this.recipes = [recipe1, recipe2];
+        
+        // Save to localStorage only (don't sync to cloud)
+        this.save(false);
+        renderRecipes();
     }
 }
 
