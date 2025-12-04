@@ -71,8 +71,8 @@ if ('serviceWorker' in navigator) {
 }
 
 // Supabase Configuration
-const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with your Supabase project URL
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your Supabase anon key
+const SUPABASE_URL = https://yelrnhvhxgoqtbszvqzt.supabase.co; // Replace with your Supabase project URL
+const SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbHJuaHZoeGdvcXRic3p2cXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MDExODksImV4cCI6MjA4MDM3NzE4OX0.IOIU9Eob1JvcMZ0mjcQyjmSOKasYjGcwA3ZY5k5nJKE // Replace with your Supabase anon key
 
 // Recipe Storage with Supabase Cloud Sync
 class RecipeStore {
