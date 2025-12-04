@@ -136,18 +136,49 @@ class AuthManager {
         try {
             const passwordHash = await this.hashPassword(password);
             
-            // Check stored credentials
+            // First, check if this email has recipes in the cloud (user exists)
+            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes?user_email=eq.${encodeURIComponent(email)}&select=user_id&limit=1`, {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+            
+            const existing = await checkResponse.json();
+            
+            // Check if we have stored credentials locally
             const stored = localStorage.getItem('sourdough-user');
-            if (stored) {
-                const user = JSON.parse(stored);
-                if (user.email === email && user.passwordHash === passwordHash) {
+            let storedUser = stored ? JSON.parse(stored) : null;
+            
+            // Verify password hash
+            if (storedUser && storedUser.email === email && storedUser.passwordHash === passwordHash) {
+                // Credentials match
+                this.userEmail = email;
+                this.userId = storedUser.id;
+                return true;
+            } else if (existing && existing.length > 0) {
+                // User exists in cloud, but no local creds or wrong password locally
+                // This means they signed up on this device before, verify the password
+                if (storedUser && storedUser.email === email) {
+                    // Local credentials exist but password is wrong
+                    throw new Error('Invalid email or password');
+                } else {
+                    // No local credentials, but user exists in cloud
+                    // Store new credentials (this is signing in from a different device)
+                    const userId = existing[0].user_id;
+                    localStorage.setItem('sourdough-user', JSON.stringify({
+                        email: email,
+                        id: userId,
+                        passwordHash: passwordHash
+                    }));
                     this.userEmail = email;
-                    this.userId = user.id;
+                    this.userId = userId;
                     return true;
                 }
+            } else {
+                // User doesn't exist at all
+                throw new Error('Invalid email or password');
             }
-            
-            throw new Error('Invalid email or password');
         } catch (error) {
             console.error('Sign in failed:', error);
             throw error;
@@ -956,4 +987,5 @@ document.addEventListener('touchend', (event) => {
     }
     lastTouchEnd = now;
 }, false);
+
 
