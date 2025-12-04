@@ -215,14 +215,20 @@ class RecipeStore {
 
     // Initialize Supabase connection
     async initSupabase() {
+        console.log('🚀 Initializing Supabase connection...');
+        
         // Check if user is authenticated
         if (!auth.isAuthenticated()) {
+            console.log('❌ User not authenticated');
             showAuthScreen();
             return;
         }
+        
+        console.log('✅ User authenticated:', auth.userEmail);
 
         try {
             // Fetch recipes for this user
+            console.log('📥 Fetching recipes from cloud...');
             const cloudRecipes = await this.fetchFromSupabase();
             
             if (cloudRecipes && cloudRecipes.length > 0) {
@@ -300,13 +306,19 @@ class RecipeStore {
 
     // Sync single recipe to Supabase
     async syncToSupabase(recipe) {
+        console.log('🔄 Syncing recipe to Supabase:', recipe.name);
+        console.log('   Supabase ready:', this.supabaseReady);
+        console.log('   User email:', auth.userEmail);
+        
         if (!this.supabaseReady) {
+            console.log('⏳ Queuing recipe for later sync');
             this.syncQueue.push(recipe);
             return;
         }
 
         try {
             // Check if recipe already exists in cloud
+            console.log('   Checking if recipe exists in cloud...');
             const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${recipe.id}&user_email=eq.${encodeURIComponent(auth.userEmail)}`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
@@ -331,7 +343,8 @@ class RecipeStore {
 
             if (existing && existing.length > 0) {
                 // Update existing recipe
-                await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${recipe.id}&user_email=eq.${encodeURIComponent(auth.userEmail)}`, {
+                console.log('   📝 Updating existing recipe');
+                const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${recipe.id}&user_email=eq.${encodeURIComponent(auth.userEmail)}`, {
                     method: 'PATCH',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -341,9 +354,11 @@ class RecipeStore {
                     },
                     body: JSON.stringify(recipeData)
                 });
+                console.log('   ✅ Recipe updated, status:', updateResponse.status);
             } else {
                 // Insert new recipe
-                await fetch(`${SUPABASE_URL}/rest/v1/recipes`, {
+                console.log('   ➕ Inserting new recipe');
+                const insertResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes`, {
                     method: 'POST',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -353,9 +368,14 @@ class RecipeStore {
                     },
                     body: JSON.stringify(recipeData)
                 });
+                console.log('   ✅ Recipe inserted, status:', insertResponse.status);
+                if (!insertResponse.ok) {
+                    const errorText = await insertResponse.text();
+                    console.error('   ❌ Insert failed:', errorText);
+                }
             }
         } catch (error) {
-            console.log('Sync to Supabase failed:', error);
+            console.error('❌ Sync to Supabase failed:', error);
         }
     }
 
@@ -387,10 +407,12 @@ class RecipeStore {
     }
 
     save(syncToCloud = true) {
+        console.log('💾 Saving recipes to localStorage, count:', this.recipes.length);
         localStorage.setItem('sourdough-recipes', JSON.stringify(this.recipes));
         
         // Sync to Supabase
         if (syncToCloud) {
+            console.log('☁️ Triggering cloud sync...');
             this.syncAllToSupabase();
         }
     }
@@ -987,5 +1009,3 @@ document.addEventListener('touchend', (event) => {
     }
     lastTouchEnd = now;
 }, false);
-
-
