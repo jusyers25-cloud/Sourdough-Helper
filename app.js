@@ -624,86 +624,71 @@ function updateUIForMode() {
     const fridgeTempMainInput = document.getElementById('fridge-temp-main');
     const doughTempInput = document.getElementById('dough-temp-input');
     const bulkResult = document.getElementById('bulk-result');
-    const proofResult = document.getElementById('proof-result');
+    const proofResultBulkCold = document.getElementById('proof-result-bulkcold');
+    const totalResult = document.getElementById('total-result');
     
     const bulkTitle = document.getElementById('bulk-title');
     const bulkSubtitle = document.getElementById('bulk-subtitle');
     const bulkTimeLabel = document.getElementById('bulk-time-label');
     const bulkTimeDesc = document.getElementById('bulk-time-desc');
     
-    const proofTitle = document.getElementById('proof-title');
-    const proofSubtitle = document.getElementById('proof-subtitle');
+    const proofTimeStep = document.getElementById('proof-time-step');
     const proofTimeLabel = document.getElementById('proof-time-label');
     const proofTimeDesc = document.getElementById('proof-time-desc');
     
-    const totalDivider = document.getElementById('total-divider');
-    const totalTimeSection = document.getElementById('total-time-section');
-    
     if (currentMode === 'counter') {
-        // Counter only mode - show bulk, proof, and total
+        // Counter only mode - bulk and proof together, total separate
         doughTempInput.style.display = 'block';
         fridgeTempMainInput.style.display = 'none';
-        sectionDivider.style.display = 'flex';
+        sectionDivider.style.display = 'none';
         fridgeTempInput.style.display = 'none';
-        proofResult.style.display = 'block';
+        proofResultBulkCold.style.display = 'none';
         bulkResult.style.display = 'block';
+        totalResult.style.display = 'block';
+        proofTimeStep.style.display = 'flex';
         
-        bulkTitle.textContent = 'Bulk Fermentation';
+        bulkTitle.textContent = 'Fermentation Times';
         bulkSubtitle.textContent = 'On the counter';
-        bulkTimeLabel.textContent = 'Bulk fermentation time';
+        bulkTimeLabel.textContent = 'Bulk fermentation';
         bulkTimeDesc.textContent = 'Until dough doubles';
         
-        proofTitle.textContent = 'Final Proof';
-        proofSubtitle.textContent = 'On the counter';
-        proofTimeLabel.textContent = 'Final proof time';
+        proofTimeLabel.textContent = 'Final proof';
         proofTimeDesc.textContent = 'Until ready to bake';
         
-        totalDivider.style.display = 'block';
-        totalTimeSection.style.display = 'flex';
-        
     } else if (currentMode === 'bulk-cold') {
-        // Bulk on counter, then cold proof
+        // Bulk on counter, then cold proof - keep existing layout
         doughTempInput.style.display = 'block';
         fridgeTempMainInput.style.display = 'none';
         sectionDivider.style.display = 'flex';
         fridgeTempInput.style.display = 'block';
-        proofResult.style.display = 'block';
+        proofResultBulkCold.style.display = 'block';
         bulkResult.style.display = 'block';
+        totalResult.style.display = 'none';
+        proofTimeStep.style.display = 'none';
         
         bulkTitle.textContent = 'Bulk Fermentation';
         bulkSubtitle.textContent = 'On the counter';
         bulkTimeLabel.textContent = 'Bulk fermentation time';
         bulkTimeDesc.textContent = 'Until dough doubles';
         
-        proofTitle.textContent = 'Cold Proof';
-        proofSubtitle.textContent = 'In the fridge';
-        proofTimeLabel.textContent = 'Final proof time';
-        proofTimeDesc.textContent = 'Overnight in fridge';
-        
-        totalDivider.style.display = 'block';
-        totalTimeSection.style.display = 'flex';
-        
     } else if (currentMode === 'cold-only') {
-        // Cold only mode - show bulk, proof, and total in fridge
+        // Cold only mode - bulk and proof together, total separate
         doughTempInput.style.display = 'none';
         fridgeTempMainInput.style.display = 'block';
-        sectionDivider.style.display = 'flex';
+        sectionDivider.style.display = 'none';
         fridgeTempInput.style.display = 'none';
-        proofResult.style.display = 'block';
+        proofResultBulkCold.style.display = 'none';
         bulkResult.style.display = 'block';
+        totalResult.style.display = 'block';
+        proofTimeStep.style.display = 'flex';
         
-        bulkTitle.textContent = 'Bulk Fermentation';
+        bulkTitle.textContent = 'Fermentation Times';
         bulkSubtitle.textContent = 'In the fridge';
-        bulkTimeLabel.textContent = 'Bulk fermentation time';
+        bulkTimeLabel.textContent = 'Bulk fermentation';
         bulkTimeDesc.textContent = 'Until dough doubles';
         
-        proofTitle.textContent = 'Final Proof';
-        proofSubtitle.textContent = 'In the fridge';
-        proofTimeLabel.textContent = 'Final proof time';
+        proofTimeLabel.textContent = 'Final proof';
         proofTimeDesc.textContent = 'Until ready to bake';
-        
-        totalDivider.style.display = 'block';
-        totalTimeSection.style.display = 'flex';
     }
 }
 
@@ -795,6 +780,17 @@ function calculateTimes() {
         bulkTimeEl.textContent = formatTime(bulkTime);
         proofTimeEl.textContent = formatTime(proofTime);
         totalTimeEl.textContent = formatTime(totalTime);
+    }
+    
+    // Update UI based on mode for the correct elements
+    if (currentMode === 'bulk-cold') {
+        // Bulk+cold mode uses separate cards with different IDs
+        document.getElementById('proof-time-bulkcold').textContent = formatTime(proofTime);
+        document.getElementById('total-time-bulkcold').textContent = formatTime(totalTime);
+    } else {
+        // Counter and cold-only modes show proof in the same card
+        document.getElementById('proof-time').textContent = formatTime(proofTime);
+        document.getElementById('total-time').textContent = formatTime(totalTime);
     }
 }
 
