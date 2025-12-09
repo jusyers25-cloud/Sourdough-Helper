@@ -640,18 +640,26 @@ function updateUIForMode() {
     const totalTimeSection = document.getElementById('total-time-section');
     
     if (currentMode === 'counter') {
-        // Counter only mode
+        // Counter only mode - show bulk, proof, and total
         doughTempInput.style.display = 'block';
         fridgeTempMainInput.style.display = 'none';
-        sectionDivider.style.display = 'none';
+        sectionDivider.style.display = 'flex';
         fridgeTempInput.style.display = 'none';
-        proofResult.style.display = 'none';
+        proofResult.style.display = 'block';
         bulkResult.style.display = 'block';
         
-        bulkTitle.textContent = 'Fermentation Time';
+        bulkTitle.textContent = 'Bulk Fermentation';
         bulkSubtitle.textContent = 'On the counter';
-        bulkTimeLabel.textContent = 'Total fermentation time';
-        bulkTimeDesc.textContent = 'Until ready to bake';
+        bulkTimeLabel.textContent = 'Bulk fermentation time';
+        bulkTimeDesc.textContent = 'Until dough doubles';
+        
+        proofTitle.textContent = 'Final Proof';
+        proofSubtitle.textContent = 'On the counter';
+        proofTimeLabel.textContent = 'Final proof time';
+        proofTimeDesc.textContent = 'Until ready to bake';
+        
+        totalDivider.style.display = 'block';
+        totalTimeSection.style.display = 'flex';
         
     } else if (currentMode === 'bulk-cold') {
         // Bulk on counter, then cold proof
@@ -676,18 +684,26 @@ function updateUIForMode() {
         totalTimeSection.style.display = 'flex';
         
     } else if (currentMode === 'cold-only') {
-        // Cold only mode - hide dough temp, show fridge temp in main section
+        // Cold only mode - show bulk, proof, and total in fridge
         doughTempInput.style.display = 'none';
         fridgeTempMainInput.style.display = 'block';
-        sectionDivider.style.display = 'none';
+        sectionDivider.style.display = 'flex';
         fridgeTempInput.style.display = 'none';
-        proofResult.style.display = 'none';
+        proofResult.style.display = 'block';
         bulkResult.style.display = 'block';
         
-        bulkTitle.textContent = 'Cold Fermentation';
+        bulkTitle.textContent = 'Bulk Fermentation';
         bulkSubtitle.textContent = 'In the fridge';
-        bulkTimeLabel.textContent = 'Total fermentation time';
-        bulkTimeDesc.textContent = 'Cold bulk and proof';
+        bulkTimeLabel.textContent = 'Bulk fermentation time';
+        bulkTimeDesc.textContent = 'Until dough doubles';
+        
+        proofTitle.textContent = 'Final Proof';
+        proofSubtitle.textContent = 'In the fridge';
+        proofTimeLabel.textContent = 'Final proof time';
+        proofTimeDesc.textContent = 'Until ready to bake';
+        
+        totalDivider.style.display = 'block';
+        totalTimeSection.style.display = 'flex';
     }
 }
 
@@ -710,7 +726,8 @@ function calculateTimes() {
         // === COUNTER ONLY MODE ===
         // Full fermentation at room temperature
         // Base time at 75°F dough temp, 20% inoculation, 70% hydration
-        let baseTime = 6.0; // Slightly longer for full proof on counter
+        let baseBulkTime = 4.0; // Bulk fermentation
+        let baseProofTime = 2.0; // Final proof on counter
         
         const idealTemp = 75;
         const tempDiff = doughTemp - idealTemp;
@@ -719,11 +736,14 @@ function calculateTimes() {
         const inoculationFactor = 20 / inoculation;
         const hydrationFactor = 1 + ((70 - hydration) * 0.015);
         
-        bulkTime = baseTime * tempFactor * inoculationFactor * hydrationFactor;
-        totalTime = bulkTime;
+        bulkTime = baseBulkTime * tempFactor * inoculationFactor * hydrationFactor;
+        proofTime = baseProofTime * tempFactor * inoculationFactor * hydrationFactor;
+        totalTime = bulkTime + proofTime;
         
         // Update display
         bulkTimeEl.textContent = formatTime(bulkTime);
+        proofTimeEl.textContent = formatTime(proofTime);
+        totalTimeEl.textContent = formatTime(totalTime);
         
     } else if (currentMode === 'bulk-cold') {
         // === BULK + COLD MODE ===
@@ -757,7 +777,8 @@ function calculateTimes() {
         // === COLD ONLY MODE ===
         // Full fermentation in fridge (slower, longer process)
         // Base time at 38°F fridge temp, 20% inoculation
-        let baseColdTime = 24.0; // Much longer for full cold fermentation
+        let baseColdBulkTime = 16.0; // Cold bulk fermentation
+        let baseColdProofTime = 8.0; // Cold final proof
         
         const idealFridgeTemp = 38;
         const fridgeTempDiff = fridgeTemp - idealFridgeTemp;
@@ -766,11 +787,14 @@ function calculateTimes() {
         // Cold fermentation is less affected by inoculation
         const coldInoculationFactor = 1 + ((20 - inoculation) * 0.015);
         
-        bulkTime = baseColdTime * fridgeTempFactor * coldInoculationFactor;
-        totalTime = bulkTime;
+        bulkTime = baseColdBulkTime * fridgeTempFactor * coldInoculationFactor;
+        proofTime = baseColdProofTime * fridgeTempFactor * coldInoculationFactor;
+        totalTime = bulkTime + proofTime;
         
         // Update display
         bulkTimeEl.textContent = formatTime(bulkTime);
+        proofTimeEl.textContent = formatTime(proofTime);
+        totalTimeEl.textContent = formatTime(totalTime);
     }
 }
 
@@ -1041,3 +1065,4 @@ document.addEventListener('touchend', (event) => {
     }
     lastTouchEnd = now;
 }, false);
+
